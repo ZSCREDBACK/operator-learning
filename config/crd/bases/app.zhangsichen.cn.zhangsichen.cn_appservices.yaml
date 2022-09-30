@@ -201,11 +201,6 @@ spec:
                   - port
                   type: object
                 type: array
-              replicas:
-                description: Foo is an example field of AppService. Edit appservice_types.go
-                  to remove/update
-                format: int32
-                type: integer
               resources:
                 description: ResourceRequirements describes the compute resource requirements.
                 properties:
@@ -232,9 +227,16 @@ spec:
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                     type: object
                 type: object
+              selector:
+                additionalProperties:
+                  type: string
+                type: object
+              size:
+                format: int32
+                type: integer
             required:
             - image
-            - replicas
+            - size
             type: object
           status:
             description: AppServiceStatus defines the observed state of AppService

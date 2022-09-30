@@ -23,10 +23,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	"k8s.io/apimachinery/pkg/runtime"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -62,7 +60,7 @@ func (r *AppServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Fetch the AppService instance
 	instance := &appzhangsichencnv1.AppService{}
-	err := r.Get(ctx, req.NamespacedName, instance)
+	err := r.Client.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		// 如果是找不到,说明这个cr已经被删除了
 		if errors.IsNotFound(err) {
@@ -79,38 +77,35 @@ func (r *AppServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
-	// if instance.DeletionTimestamp != nil { // 如果对象被删除了
-	// 	return reconcile.Result{}, err
-	// }
-
-	// 如果资源不存在,则创建关联资源
-	// 如果资源存在,判断是否需要更新
-	// 如果资源需要更新,则直接更新
-	// 如果资源不需要更新,则正常返回
+	// 思路:
+	// 1.如果资源不存在,则创建关联资源
+	// 2.如果资源存在,判断是否需要更新
+	// 3.如果资源需要更新,则直接更新
+	// 4.如果资源不需要更新,则正常返回
 
 	// TODO(user): your logic here
 
-	// 定义一个Deployment类型的变量
 	// 确认cr下的deploy是否存在
 	deploy := &appsv1.Deployment{}
 
 	// 获取当前NS下的Deployment资源,并判断是否存在
-	if err = r.Client.Get(context.TODO(), req.NamespacedName, deploy); err != nil && errors.IsNotFound(err) { // 如果资源不存在,则创建相关资源
+	// 如果资源不存在,则创建相关资源
+	if err = r.Client.Get(ctx, req.NamespacedName, deploy); err != nil && errors.IsNotFound(err) {
 		// 1. 创建Deployment资源
-		deploy := r.deploymentForAppService(instance)
-		if err := r.Client.Create(context.TODO(), deploy); err != nil {
+		deploy := r.deploymentForAppService(instance) // 将cr转换为deployment资源(单独封装)
+		if err := r.Client.Create(ctx, deploy); err != nil {
 			reqLogger.Error(err, "Failed to create new Deployment", "Deployment.Namespace", deploy.Namespace, "Deployment.Name", deploy.Name)
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 
 		// 2. 创建Service资源
-		service := r.serviceForAppService(instance)
-		if err := r.Client.Create(context.TODO(), service); err != nil {
+		service := r.serviceForAppService(instance) // 将cr转换为service资源(单独封装)
+		if err := r.Client.Create(ctx, service); err != nil {
 			reqLogger.Error(err, "Failed to create new Service", "Service.Namespace", service.Namespace, "Service.Name", service.Name)
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 
-		// 3. 关联Annotations
+		// 3. 添加Annotation信息
 		data, _ := json.Marshal(instance.Spec)
 		if instance.Annotations != nil {
 			instance.Annotations["spec"] = string(data)
@@ -119,52 +114,54 @@ func (r *AppServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// 4. 更新AppService资源
-		if err := r.Client.Update(context.TODO(), instance); err != nil {
-			return reconcile.Result{}, err
+		if err := r.Client.Update(ctx, instance); err != nil {
+			return ctrl.Result{}, err
 		}
 
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
-	// 获取旧的spec
+	// 反之,如果资源存在,则判断是否需要更新
+	// 先获取旧的spec
 	oldSpec := &appzhangsichencnv1.AppServiceSpec{}
 	if err := json.Unmarshal([]byte(instance.Annotations["spec"]), oldSpec); err != nil {
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
 
 	// 判断是否需要更新
-	if !reflect.DeepEqual(instance.Spec, *oldSpec) {
-		// 更新关联资源
+	if !reflect.DeepEqual(instance.Spec, *oldSpec) { // 判断两个结构体是否相等
+		// 如果不相等,则更新相关资源
 		newDeploy := r.deploymentForAppService(instance)
 		oldDeploy := &appsv1.Deployment{}
-		if err := r.Client.Get(context.TODO(), req.NamespacedName, oldDeploy); err != nil {
-			return reconcile.Result{}, err
+		if err := r.Client.Get(ctx, req.NamespacedName, oldDeploy); err != nil {
+			return ctrl.Result{}, err
 		}
 		oldDeploy.Spec = newDeploy.Spec
-		if err := r.Client.Update(context.TODO(), oldDeploy); err != nil {
-			return reconcile.Result{}, err
+		if err := r.Client.Update(ctx, oldDeploy); err != nil {
+			return ctrl.Result{}, err
 		}
 
-		newService := r.serviceForAppService(instance)
+		newService := r.serviceForAppService(instance) // 将cr转换为service资源
 		oldService := &corev1.Service{}
-		if err := r.Client.Get(context.TODO(), req.NamespacedName, oldService); err != nil {
-			return reconcile.Result{}, err
+		if err := r.Client.Get(ctx, req.NamespacedName, oldService); err != nil {
+			return ctrl.Result{}, err
 		}
 		oldService.Spec = newService.Spec
-		if err := r.Client.Update(context.TODO(), oldService); err != nil {
-			return reconcile.Result{}, err
+		if err := r.Client.Update(ctx, oldService); err != nil {
+			return ctrl.Result{}, err
 		}
 
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
-	return reconcile.Result{}, nil
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *AppServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appzhangsichencnv1.AppService{}).
+		Owns(&appsv1.Deployment{}).
 		Complete(r)
 }
 
@@ -178,7 +175,7 @@ func (r *AppServiceReconciler) deploymentForAppService(instance *appzhangsichenc
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Size: instance.Spec.Size,
+			Replicas: &instance.Spec.Size,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": instance.Name,
@@ -195,6 +192,12 @@ func (r *AppServiceReconciler) deploymentForAppService(instance *appzhangsichenc
 						{
 							Name:  instance.Name,
 							Image: instance.Spec.Image,
+							Ports: []corev1.ContainerPort{ // 定义容器端口
+								{
+									ContainerPort: 80,
+									Name:          "http",
+								},
+							},
 						},
 					},
 				},
@@ -213,7 +216,7 @@ func (r *AppServiceReconciler) serviceForAppService(instance *appzhangsichencnv1
 	// 定义一个Service类型的变量
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-svc",
+			Name:      instance.Name + "-svc", // 为了避免名称冲突,这里自动为svc加上后缀
 			Namespace: instance.Namespace,
 		},
 		Spec: corev1.ServiceSpec{
