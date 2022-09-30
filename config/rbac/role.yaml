@@ -1,0 +1,33 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - app.zhangsichen.cn.zhangsichen.cn
+  resources:
+  - appservices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - app.zhangsichen.cn.zhangsichen.cn
+  resources:
+  - appservices/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - app.zhangsichen.cn.zhangsichen.cn
+  resources:
+  - appservices/status
+  verbs:
+  - get
+  - patch
+  - update

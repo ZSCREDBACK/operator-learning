@@ -1,0 +1,19 @@
+domain: zhangsichen.cn
+layout:
+- go.kubebuilder.io/v3
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: operator-learning
+repo: github.com/ZSCREDBACK/operator-demo
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: zhangsichen.cn
+  group: app.zhangsichen.cn
+  kind: AppService
+  path: github.com/ZSCREDBACK/operator-demo/api/v1
+  version: v1
+version: "3"

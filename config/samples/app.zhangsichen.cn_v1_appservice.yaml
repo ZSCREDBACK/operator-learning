@@ -1,0 +1,6 @@
+apiVersion: app.zhangsichen.cn.zhangsichen.cn/v1
+kind: AppService
+metadata:
+  name: appservice-sample
+spec:
+  # TODO(user): Add fields here
