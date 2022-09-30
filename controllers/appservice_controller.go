@@ -54,7 +54,6 @@ type AppServiceReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 func (r *AppServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// 为了不报错
 	_ = log.FromContext(ctx)
 
 	// 记录发生了Reconcile操作的对象日志
@@ -63,43 +62,51 @@ func (r *AppServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Fetch the AppService instance
 	instance := &appzhangsichencnv1.AppService{}
-	err := r.Client.Get(context.TODO(), req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
+		// 如果是找不到,说明这个cr已经被删除了
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			return reconcile.Result{}, nil
+			// 返回资源不存在的错误日志
+			reqLogger.Info("AppService resource not found. Ignoring since object must be deleted")
+			// 停止loop循环,不再订阅事件
+			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		// 返回错误,但是继续监听事件
+		return ctrl.Result{}, err
 	}
 
-	if instance.DeletionTimestamp != nil {
-		return reconcile.Result{}, err
-	}
+	// if instance.DeletionTimestamp != nil { // 如果对象被删除了
+	// 	return reconcile.Result{}, err
+	// }
 
 	// 如果资源不存在,则创建关联资源
-	// 如果资源存在,判断是否需要更新【或者删除-暂时不讨论】
+	// 如果资源存在,判断是否需要更新
 	// 如果资源需要更新,则直接更新
 	// 如果资源不需要更新,则正常返回
 
 	// TODO(user): your logic here
 
 	// 定义一个Deployment类型的变量
+	// 确认cr下的deploy是否存在
 	deploy := &appsv1.Deployment{}
 
-	// 获取Deployment资源,并判断是否存在
-	if err = r.Client.Get(context.TODO(), req.NamespacedName, deploy); err != nil && errors.IsNotFound(err) { // 如果资源不存在,则创建关联资源
+	// 获取当前NS下的Deployment资源,并判断是否存在
+	if err = r.Client.Get(context.TODO(), req.NamespacedName, deploy); err != nil && errors.IsNotFound(err) { // 如果资源不存在,则创建相关资源
 		// 1. 创建Deployment资源
 		deploy := r.deploymentForAppService(instance)
 		if err := r.Client.Create(context.TODO(), deploy); err != nil {
+			reqLogger.Error(err, "Failed to create new Deployment", "Deployment.Namespace", deploy.Namespace, "Deployment.Name", deploy.Name)
 			return reconcile.Result{}, err
 		}
 
 		// 2. 创建Service资源
 		service := r.serviceForAppService(instance)
 		if err := r.Client.Create(context.TODO(), service); err != nil {
+			reqLogger.Error(err, "Failed to create new Service", "Service.Namespace", service.Namespace, "Service.Name", service.Name)
 			return reconcile.Result{}, err
 		}
 
@@ -171,7 +178,7 @@ func (r *AppServiceReconciler) deploymentForAppService(instance *appzhangsichenc
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: instance.Spec.Replicas,
+			Size: instance.Spec.Size,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": instance.Name,

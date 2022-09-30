@@ -30,9 +30,8 @@ type AppServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of AppService. Edit appservice_types.go to remove/update
-	Replicas  *int32                      `json:"replicas"`
-	Image     string                      `json:"image"`
+	Size      int32                       `json:"size"`  // spec.size
+	Image     string                      `json:"image"` // spec.image
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 	Envs      []corev1.EnvVar             `json:"envs,omitempty"`
 	Ports     []corev1.ServicePort        `json:"ports,omitempty"`
@@ -43,7 +42,10 @@ type AppServiceSpec struct {
 type AppServiceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	// 这里为了省事,直接使用Deployment的状态
 	appsv1.DeploymentStatus `json:",inline"`
+	// 其他的状态信息(可选)
+	// Nodes []string `json:"nodes"`
 }
 
 //+kubebuilder:object:root=true
