@@ -31,3 +31,27 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - create
+- apiGroups:
+  - '*'
+  resources:
+  - services
+  verbs:
+  - get
+  - update
+  - create

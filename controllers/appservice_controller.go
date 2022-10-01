@@ -206,7 +206,7 @@ func (r *AppServiceReconciler) deploymentForAppService(instance *appzhangsichenc
 	}
 
 	// Set AppService instance as the owner and controller
-	ctrl.SetControllerReference(instance, deploy, r.Scheme)
+	_ = ctrl.SetControllerReference(instance, deploy, r.Scheme)
 
 	return deploy
 }
@@ -233,7 +233,7 @@ func (r *AppServiceReconciler) serviceForAppService(instance *appzhangsichencnv1
 	}
 
 	// Set AppService instance as the owner and controller
-	ctrl.SetControllerReference(instance, service, r.Scheme)
+	_ = ctrl.SetControllerReference(instance, service, r.Scheme)
 
 	return service
 }

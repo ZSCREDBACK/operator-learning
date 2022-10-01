@@ -38,7 +38,8 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: controller:latest
+        # image: controller:latest
+        image: zhangsichen/operator:v0.0.1_demo
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
