@@ -60,8 +60,7 @@ func (r *AppServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Fetch the AppService instance
 	instance := &appzhangsichencnv1.AppService{}
-	err := r.Client.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		// 如果是找不到,说明这个cr已经被删除了
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -90,7 +89,7 @@ func (r *AppServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// 获取当前NS下的Deployment资源,并判断是否存在
 	// 如果资源不存在,则创建相关资源
-	if err = r.Client.Get(ctx, req.NamespacedName, deploy); err != nil && errors.IsNotFound(err) {
+	if err := r.Client.Get(ctx, req.NamespacedName, deploy); err != nil && errors.IsNotFound(err) {
 		// 1. 创建Deployment资源
 		deploy := r.deploymentForAppService(instance) // 将cr转换为deployment资源(单独封装)
 		if err := r.Client.Create(ctx, deploy); err != nil {
@@ -158,10 +157,13 @@ func (r *AppServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 // SetupWithManager sets up the controller with the Manager.
+// for表示监控的cr的类型,Owns表示监控的第二资源也就是cr需要控制的资源
 func (r *AppServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		// watch AppService这个crd作为第一监控资源
 		For(&appzhangsichencnv1.AppService{}).
-		Owns(&appsv1.Deployment{}).
+		// watch Deployment这个资源作为第二监控资源
+		Owns(&appsv1.Deployment{}). // 增加了此行
 		Complete(r)
 }
 
