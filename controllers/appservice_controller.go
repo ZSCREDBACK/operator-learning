@@ -164,7 +164,7 @@ func (r *AppServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&appzhangsichencnv1.AppService{}).
 		// watch Deployment这个资源作为第二监控资源
 		Owns(&appsv1.Deployment{}). // 增加了此行
-		Complete(r)
+		Complete(r)                 // 传入Reconciler
 }
 
 // 根据 CRD 中的声明去填充 Deployment 的内容
